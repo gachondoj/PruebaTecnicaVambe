@@ -1,19 +1,23 @@
+import json
+import re
 import requests
-import anthropic
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
 load_dotenv()  # Carga tu API key de .env
 
 API_BASE_URL = "http://localhost:8000"  # Tu API local de FastAPI
-CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY)
+
 
 def get_instructions(assistant_id: str) -> str:
     response = requests.get(f"{API_BASE_URL}/assistants/{assistant_id}")
     if response.status_code == 200:
-        return response.json()["instructions"]
+        print(response.json())
+        return response.json()['instructions']
     else:
         raise Exception("No se pudo obtener el assistant")
 
@@ -27,14 +31,14 @@ def update_instructions(assistant_id: str, new_instructions: str):
     else:
         print("❌ Error al actualizar:", response.text)
 
-def ask_claude_for_suggestions(instructions: str, assistant_id: str) -> dict:
+def ask_openai_for_suggestions(instructions: str, assistant_id: str) -> dict:
     prompt = f"""
 Estás actuando como un editor experto de instrucciones para asistentes virtuales.
 Dado el siguiente bloque de instrucciones, sugiere una mejora clara, profesional y concisa.
 
 ID del asistente: {assistant_id}
 Instrucciones actuales:
-\"\"\"
+\"\"\" 
 {instructions}
 \"\"\"
 
@@ -43,35 +47,36 @@ Devuelve tu respuesta en formato JSON con las claves:
 - explanation
 """
 
-    response = client.messages.create(
-        model="claude-3-sonnet-20240229",  # o haiku u opus si tienes acceso
-        max_tokens=500,
-        temperature=0.7,
-        system="Eres un asistente que mejora instrucciones para otros asistentes.",
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
+    response = client.chat.completions.create(model="gpt-4o-mini",  # O usa el modelo que prefieras (ej: gpt-4)
+    messages=[
+        {"role": "system", "content": "Eres un asistente que mejora instrucciones para otros asistentes."},
+        {"role": "user", "content": prompt}
+    ],
+    max_tokens=500,
+    temperature=0.7)
 
-    # Claude responde con texto. Intentamos parsearlo como JSON.
-    import json
-    import re
+    # La respuesta ahora se encuentra en 'choices[0].message['content']
+    try:
+        suggestion = response.choices[0].message.content.strip()
+        match = re.search(r'\{[\s\S]*\}', suggestion)
+        if match:
+            suggestion_dict = json.loads(match.group(0))
+            return suggestion_dict
+        else:
+            raise ValueError("OpenAI no devolvió un JSON válido.")
 
-    # Busca el primer bloque de texto tipo JSON entre llaves
-    match = re.search(r'\{[\s\S]*\}', response.content[0].text)
-    if match:
-        return json.loads(match.group(0))
-    else:
-        raise ValueError("Claude no devolvió un JSON válido.")
+        
+    except Exception as e:
+        raise ValueError(f"Error al procesar la respuesta de OpenAI: {e}")
 
 def mcp_flow(assistant_id: str):
     print("📥 Obteniendo instrucciones...")
     current = get_instructions(assistant_id)
 
-    print("🤖 Pidiendo sugerencias a Claude...")
-    suggestion = ask_claude_for_suggestions(current, assistant_id)
+    print("🤖 Pidiendo sugerencias a OpenAI...")
+    suggestion = ask_openai_for_suggestions(current, assistant_id)
 
-    print("\n💡 Sugerencia de Claude:")
+    print("\n💡 Sugerencia de OpenAI:")
     print(f"- Nueva versión:\n{suggestion['suggested_instructions']}")
     print(f"- Explicación: {suggestion['explanation']}")
 
