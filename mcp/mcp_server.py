@@ -5,9 +5,9 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Carga tu API key de .env
+load_dotenv()
 
-API_BASE_URL = "http://localhost:8000"  # Tu API local de FastAPI
+API_BASE_URL = "http://localhost:8000"  # API local de FastAPI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -34,7 +34,16 @@ def update_instructions(assistant_id: str, new_instructions: str):
 def ask_openai_for_suggestions(instructions: str, assistant_id: str) -> dict:
     prompt = f"""
 Estás actuando como un editor experto de instrucciones para asistentes virtuales.
-Dado el siguiente bloque de instrucciones, sugiere una mejora clara, profesional y concisa.
+
+Ejemplo 1:
+Instrucción original: "Responde a lo que te digan."
+Sugerencia: "Responde de manera clara y breve a cada consulta, adaptando el nivel de detalle al contexto del usuario."
+
+Ejemplo 2:
+Intrucción: Sé amable y útil.
+Sugerencia: Mantén un tono amable y profesional en todas tus respuestas. Prioriza la claridad, ofrece ayuda práctica y adapta tu nivel de detalle según la complejidad de la consulta.
+
+Ahora, dado el siguiente bloque de instrucciones, sugiere una mejora clara, profesional y concisa.
 
 ID del asistente: {assistant_id}
 Instrucciones actuales:
@@ -47,7 +56,7 @@ Devuelve tu respuesta en formato JSON con las claves:
 - explanation
 """
 
-    response = client.chat.completions.create(model="gpt-4o-mini",  # O usa el modelo que prefieras (ej: gpt-4)
+    response = client.chat.completions.create(model="gpt-4o-mini",
     messages=[
         {"role": "system", "content": "Eres un asistente que mejora instrucciones para otros asistentes."},
         {"role": "user", "content": prompt}
@@ -55,7 +64,6 @@ Devuelve tu respuesta en formato JSON con las claves:
     max_tokens=500,
     temperature=0.7)
 
-    # La respuesta ahora se encuentra en 'choices[0].message['content']
     try:
         suggestion = response.choices[0].message.content.strip()
         match = re.search(r'\{[\s\S]*\}', suggestion)
