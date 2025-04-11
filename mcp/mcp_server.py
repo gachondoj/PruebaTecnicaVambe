@@ -107,5 +107,5 @@ def mcp_flow(assistant_id: str):
         print("No se aplicaron cambios.")
 
 if __name__ == "__main__":
-    assistant_id = input("🆔 Ingresa el ID del assistant: ")
+    assistant_id = input("Ingresa el ID del assistant: ")
     mcp_flow(assistant_id)
