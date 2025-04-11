@@ -33,28 +33,38 @@ def update_instructions(assistant_id: str, new_instructions: str):
 
 def ask_openai_for_suggestions(instructions: str, assistant_id: str) -> dict:
     prompt = f"""
-Estás actuando como un editor experto de instrucciones para asistentes virtuales.
+    Estás actuando como un editor experto de instrucciones para asistentes virtuales.
 
-Ejemplo 1:
-Instrucción original: "Responde a lo que te digan."
-Sugerencia: "Responde de manera clara y breve a cada consulta, adaptando el nivel de detalle al contexto del usuario."
+    Tu tarea es analizar instrucciones actuales, detectar oportunidades de mejora y devolver una propuesta clara, profesional y útil para los usuarios.
 
-Ejemplo 2:
-Intrucción: Sé amable y útil.
-Sugerencia: Mantén un tono amable y profesional en todas tus respuestas. Prioriza la claridad, ofrece ayuda práctica y adapta tu nivel de detalle según la complejidad de la consulta.
+    Devuelve tu respuesta en formato JSON con las siguientes claves:
+    - assistant_id: ID del asistente.
+    - comparison:
+        - original: Instrucciones originales.
+        - suggested: Versión mejorada.
+        - differences: Lista de diferencias clave entre ambas versiones.
+    - reasoning: Justificación clara de por qué tu versión es mejor.
 
-Ahora, dado el siguiente bloque de instrucciones, sugiere una mejora clara, profesional y concisa.
+    Ejemplo 1:
+    Original: "Responde a lo que te digan."
+    Sugerido: "Responde de manera clara y breve a cada consulta, adaptando el nivel de detalle al contexto del usuario."
+    Diferencias: ["Se agrega claridad", "Se menciona el nivel de detalle", "Se adapta al contexto"]
+    Justificación: "La nueva versión establece expectativas más precisas y guía mejor el comportamiento del asistente."
 
-ID del asistente: {assistant_id}
-Instrucciones actuales:
-\"\"\" 
-{instructions}
-\"\"\"
+    Ejemplo 2:
+    Original: "Sé amable y útil."
+    Sugerido: "Mantén un tono amable y profesional en todas tus respuestas. Prioriza la claridad, ofrece ayuda práctica y adapta tu nivel de detalle según la complejidad de la consulta."
+    Diferencias: ["Se especifica el tono", "Se agrega enfoque en claridad y utilidad", "Se incluye contexto de complejidad"]
+    Justificación: "La versión mejorada convierte una sugerencia vaga en una guía concreta para la interacción."
 
-Devuelve tu respuesta en formato JSON con las claves:
-- suggested_instructions
-- explanation
-"""
+    Ahora mejora estas instrucciones:
+
+    ID del asistente: {assistant_id}
+    Instrucciones actuales:
+    \"\"\"
+    {instructions}
+    \"\"\"
+    """
 
     response = client.chat.completions.create(model="gpt-4o-mini",
     messages=[
@@ -78,20 +88,23 @@ Devuelve tu respuesta en formato JSON con las claves:
         raise ValueError(f"Error al procesar la respuesta de OpenAI: {e}")
 
 def mcp_flow(assistant_id: str):
-    print("📥 Obteniendo instrucciones...")
+    print("Obteniendo instrucciones...")
     current = get_instructions(assistant_id)
 
-    print("🤖 Pidiendo sugerencias a OpenAI...")
+    print("Pidiendo sugerencias a OpenAI...")
     suggestion = ask_openai_for_suggestions(current, assistant_id)
 
-    print("\n💡 Sugerencia de OpenAI:")
-    print(f"- Nueva versión:\n{suggestion['suggested_instructions']}")
-    print(f"- Explicación: {suggestion['explanation']}")
+    print("\nSugerencia de OpenAI:")
+    print("\nComparación:")
+    print(f"Original:\n{suggestion['comparison']['original']}")
+    print(f"Sugerido:\n{suggestion['comparison']['suggested']}")
+    print(f"Diferencias: {', '.join(suggestion['comparison']['differences'])}")
+    print(f"Justificación: {suggestion['reasoning']}")
 
     if input("\n¿Aplicar esta sugerencia? (s/n): ").lower() == "s":
         update_instructions(assistant_id, suggestion["suggested_instructions"])
     else:
-        print("🛑 No se aplicaron cambios.")
+        print("No se aplicaron cambios.")
 
 if __name__ == "__main__":
     assistant_id = input("🆔 Ingresa el ID del assistant: ")
