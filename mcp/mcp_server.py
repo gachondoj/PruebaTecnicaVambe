@@ -102,7 +102,7 @@ def mcp_flow(assistant_id: str):
     print(f"Justificación: {suggestion['reasoning']}")
 
     if input("\n¿Aplicar esta sugerencia? (s/n): ").lower() == "s":
-        update_instructions(assistant_id, suggestion["suggested_instructions"])
+        update_instructions(assistant_id, suggestion['comparison']['suggested'])
     else:
         print("No se aplicaron cambios.")
 
